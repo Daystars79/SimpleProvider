@@ -44,7 +44,7 @@ namespace SimpleProvider.Extensions
 
             return results;
         }
-        
+
         /// <summary>
         ///  Return PropertyInfo of all properties that have Read / Write
         /// </summary>
@@ -84,14 +84,14 @@ namespace SimpleProvider.Extensions
             Type nullable = Nullable.GetUnderlyingType(info.PropertyType);
 
             if (info.GetCustomAttribute(typeof(Column)) is not Column attr)
-                return new Column
-                {
-                    Name = info.Name,
-                    DataType = info.PropertyType,
-                    IsVirtual = false,
-                    IsScope = false,
+            return new Column
+            {
+                Name = info.Name,
+                DataType = info.PropertyType,
+                IsVirtual = false,
+                IsScope = false,
                     IsNullable = !(info.PropertyType.IsValueType & (nullable == null)),
-                };
+            };
             if (string.IsNullOrEmpty(attr.Name)) attr.Name = info.Name;
             if (attr.DataType == null) attr.DataType = info.PropertyType;
             attr.IsNullable = !(info.PropertyType.IsValueType & (nullable == null));

@@ -62,6 +62,11 @@ namespace SimpleProvider.Analyzer.Structures
                 attrib = attrib.Replace("True", "true");
                 attrib = attrib.Replace("False", "false");
 
+                /* Additional Rules */
+                //if (c.Nullable) attrib = attrib.Replace($" DataType = typeof({c.NetType}),", "");
+
+
+                /* Default behavior */
                 output += attrib;
                 output += $"     public {c.NetType} {c.Name.ToPascalCase()} " + "{ get; set; }" + Environment.NewLine;
                 Properties.Add(output);

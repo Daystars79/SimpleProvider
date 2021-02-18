@@ -87,6 +87,7 @@ namespace SimpleProvider
                 _timeout = value;
             }
         }
+
         /// <summary>
         ///     Return the Underlying Connection
         /// </summary>
@@ -125,6 +126,7 @@ namespace SimpleProvider
         /// <param name="ptype">Database Type (Defaul is ProviderType.SqlServer)</param>
         public Provider(string connection, string schema, ProviderType ptype = ProviderType.SqlServer)
         {
+            Shared.Type = ptype;
             Schema = schema;
             _factory = new DbFactory(connection, ptype);
             _commands = new CommandSets(ptype);
@@ -139,6 +141,16 @@ namespace SimpleProvider
         {
             if (connection == null)
                 throw new ArgumentNullException(nameof(connection), "Instance of DbConnection must be provided");
+
+            Shared.Type = connection switch
+            {
+                System.Data.SqlClient.SqlConnection => ProviderType.SqlServer,
+                System.Data.SQLite.SQLiteConnection => ProviderType.Sqlite,
+                Oracle.ManagedDataAccess.Client.OracleConnection => ProviderType.Oracle,
+                MySql.Data.MySqlClient.MySqlConnection => ProviderType.MySql,
+                Npgsql.NpgsqlConnection => ProviderType.PostGres,
+                _ => ProviderType.SqlServer,
+            };
             Schema = schema;
             _factory = new DbFactory(connection);
             _commands = new CommandSets(_factory.DatabaseType);
@@ -566,7 +578,7 @@ namespace SimpleProvider
             using DbCommand dbc = _factory.CreateCommand(cs);
             object? dbRef = GetRecord(dbc, record.GetType());
             if (dbRef == null) return Insert(record); /* Record wasn't found proceed with an insert */
-
+            
             cs = _commands.CreateUpdate(record, dbRef, args);
 
             if (cs == null) return false;

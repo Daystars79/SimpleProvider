@@ -14,9 +14,6 @@
     <PackageLicenseExpression></PackageLicenseExpression>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <PackageProjectUrl>https://github.com/Daystars79/SimpleProvider</PackageProjectUrl>
-    <PackageReleaseNotes>* Enhanced Mapping Feature
-* Enhanced Database Analyzer functionality
-* Added Build to the Builder Class</PackageReleaseNotes>
     <PackageTags>Database, Data Access Layer, ORM, SQL</PackageTags>
     <NeutralLanguage>en</NeutralLanguage>
   </PropertyGroup>

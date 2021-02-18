@@ -196,7 +196,7 @@ namespace SimpleProvider.Factory
             DbParameter[] parameters = new DbParameter[values.Count];
             int index = 0;
             foreach (var opt in values)
-            {
+        {
                 parameters[index] = CreateParameter($"{_operator}{opt.FieldName}", opt.Value);
                 index++;
             }

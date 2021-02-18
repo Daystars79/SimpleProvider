@@ -44,6 +44,7 @@ namespace SimpleProvider.Mapping
             List<PropertyMap> mappings = result.GetMappings(columnNames);
             if (mappings.Count <= 0) return null;
 
+
             for (int index = 0; index < mappings.Count; index++)
             {
                 PropertyInfo pi = mappings[index].Key;
@@ -64,7 +65,7 @@ namespace SimpleProvider.Mapping
                     if (col.DataType == typeof(char?))
                     {
                         if (value == "") continue;
-                    }
+                }
 
                     pi.SetValue(result, Convert.ChangeType(value, nullable), null);
                     continue; /* Step to the next property */
@@ -102,6 +103,7 @@ namespace SimpleProvider.Mapping
             List<PropertyMap> mappings = result.GetMappings(columns);
 
             if (mappings.Count <= 0) return null;
+
 
             for (int index = 0; index < mappings.Count; index++)
             {
@@ -167,8 +169,9 @@ namespace SimpleProvider.Mapping
             List<PropertyMap> mappings = result.GetMappings(columnNames);
             if (mappings.Count <= 0) return null;
 
+
             for (int index = 0; index < mappings.Count; index++)
-            {
+            { 
                 PropertyInfo pi = mappings[index].Key;
                 Column col = mappings[index].Value;
 
@@ -198,6 +201,7 @@ namespace SimpleProvider.Mapping
 
                 pi.SetValue(result, Convert.ChangeType(value, pi.PropertyType));
             }
+
             return result;
         }
 

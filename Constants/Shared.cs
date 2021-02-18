@@ -16,6 +16,9 @@ namespace SimpleProvider.Constants
 
         #endregion
 
+        public static string Operator => Type == ProviderType.Oracle ? ":" : "@";
+        public static ProviderType Type { get; set; } = ProviderType.SqlServer;
+
         #region MS-SQL, MYSQL, Post-Gres CRUD Operations
 
         public const string Select = @"select tab.* from {0}.{1} tab ";

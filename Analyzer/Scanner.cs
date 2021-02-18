@@ -33,7 +33,7 @@ namespace SimpleProvider.Analyzer
             try
             {
                 _provider = new Provider(_connection, _type);
-            }
+        }
             catch (Exception)
             {
                 throw new Exception("Unable to connect to the database with the provided connection string and type.");
@@ -67,6 +67,7 @@ namespace SimpleProvider.Analyzer
         /// <returns></returns>
         public Table[] LoadTableInformation(Action step = null, Action<int> count = null, Action complete = null)
         {
+            using Provider uow = new(_connection, _type);
             try
             {
                 using Provider uow = new(_connection, _type);

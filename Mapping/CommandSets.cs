@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using OracleInternal.SqlAndPlsqlParser.LocalParsing;
 using SimpleProvider.Attributes;
 using SimpleProvider.Constants;
 using SimpleProvider.Enumerators;
@@ -51,6 +52,7 @@ namespace SimpleProvider.Mapping
             if (!Validate(record)) throw new Exception("An error occurred in the validation.");
 
             Definition def = record.GetDefinition(); /* get the definition from the object */
+            PropertyInfo[] properties = record.GetProperties();
 
             PropertyInfo[] properties = record.GetProperties();
             CommandSet cs = new()
@@ -66,6 +68,7 @@ namespace SimpleProvider.Mapping
                 PropertyInfo pi = properties[p];
                 Column column = pi.GetColumnDefinition();
                 object value = pi.GetValue(record) ?? DBNull.Value;
+                if (value == DBNull.Value) continue; /* There is no need to map this value */
 
                 if (column.IsScope)
                 {
@@ -76,6 +79,8 @@ namespace SimpleProvider.Mapping
                 if (column.IsVirtual) continue;
                 string name = $@"{_operator}{column.Name}";
 
+                string name = $@"{Shared.Operator}{column.Name}";
+                bool islast = p == properties.Length - 1;
 
                 /* Checks for the last iteration */
                 cs.CommandText += !islast ? $"{column.Name}, " : $"{column.Name}) values (";
@@ -358,6 +363,8 @@ namespace SimpleProvider.Mapping
 
             ICollection<ChangeValue> changes = Compare(source, target);
             if (changes.Count <= 0) return null;
+
+            CommandSet cs = new();
             Definition def = target.GetDefinition();
 
             CommandSet cs = new(def.IsReadOnly)
@@ -365,6 +372,7 @@ namespace SimpleProvider.Mapping
                 CommandText = string.Format(Shared.Update, def.SchemaName, def.TableName)
             };
             /* Set the base line */
+            cs.CommandText = string.Format(Shared.Update, def.SchemaName, def.TableName);
             List<PropertyMap> props = target.GetMappings(changes.Select(s => s.FieldName).ToArray());
             for (int pm = 0; pm < props.Count; pm++)
             {
@@ -400,10 +408,13 @@ namespace SimpleProvider.Mapping
                         : $"{keys[index].Name} = {_operator}{keys[index].Name} and ";
                     cs.Parameters.Add(new Option(keys[index].Name, keys[index].GetValue(target)));
                 }
+
                 cs.CommandText += where;
             }
             return cs;
         }
+
+
         /// <summary>
         /// Create Delete Commandset - Delete is generated from the Keys contained in the Definitition Attribute
         /// </summary>
@@ -538,6 +549,7 @@ namespace SimpleProvider.Mapping
                 string dir = parameters[mp].IsAscending ? "asc" : "desc";
                 sort += isLast ? $"{parameters[mp].FieldName} {dir}" : $"{parameters[mp].FieldName} {dir}, ";
             }
+
             return sort;
         }
 

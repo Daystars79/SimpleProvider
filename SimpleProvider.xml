@@ -278,6 +278,11 @@
                 Binds an Database Field to the Properties of an Class
             </summary>
         </member>
+        <member name="P:SimpleProvider.Attributes.Column.IsUnique">
+            <summary>
+                Unique Value and can not be repeated in the Database
+            </summary>
+        </member>
         <member name="P:SimpleProvider.Attributes.Column.IsNullable">
             <summary>
                 Property allows nullable types
@@ -415,7 +420,7 @@
         </member>
         <member name="T:SimpleProvider.Extensions.Extenders">
             <summary>
-            Extensions that are used publicly by the ORM
+                Extensions that are used publicly by the ORM
             </summary>
         </member>
         <member name="M:SimpleProvider.Extensions.Extenders.GetMappings(System.Object,System.String[])">
@@ -490,7 +495,7 @@
         </member>
         <member name="M:SimpleProvider.Mapping.CommandSets.CreateExists``1(SimpleProvider.Option[])">
             <summary>
-            Creates Exists Command Set
+                Creates Exists Command Set
             </summary>
             <typeparam name="T">class, new()</typeparam>
             <param name="args">Options for use in the "Where" clause</param>
@@ -624,7 +629,7 @@
         </member>
         <member name="M:SimpleProvider.CommandSet.#ctor(System.Boolean)">
             <summary>
-             Empty instance of the commandset
+                Empty instance of the commandset
             </summary>
         </member>
         <member name="M:SimpleProvider.CommandSet.#ctor(System.String,SimpleProvider.Option[])">

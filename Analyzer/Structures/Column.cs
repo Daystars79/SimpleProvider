@@ -55,9 +55,10 @@ namespace SimpleProvider.Analyzer.Structures
                         return "TimeSpan";
                     case "datetime":
                     case "datetime2":
+                    case "time":
                     case "date":
                     case "smalldatetime":
-                        return Nullable ? "DateTime?" : "DateTime";   
+                        return Nullable ? "DateTime?" : "DateTime";
                     case "datetimeoffset":
                         return "DateTimeOffset";
                     case "varbinary":
@@ -71,11 +72,14 @@ namespace SimpleProvider.Analyzer.Structures
                         return Nullable ? "byte?" : "byte";
                     case "smallint":
                         return Nullable ? "short?" : "short";
+                        break;
                     case "int":
                         return Nullable ? "int?" : "int";
                     case "bigint":
                         return Nullable ? "Int64?" : "Int64";
                     case "numeric":
+                        return Nullable ? "int?" : "int";
+                        break;
                     case "decimal":
                     case "money":
                     case "smallmoney":
@@ -88,6 +92,7 @@ namespace SimpleProvider.Analyzer.Structures
                         return "Guid";
                     default:
                         return Nullable ? "object?" : "object";
+                        break;
                 }
             }
         }

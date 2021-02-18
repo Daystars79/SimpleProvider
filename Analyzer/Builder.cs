@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -76,6 +77,7 @@ namespace SimpleProvider.Analyzer
             Compiled = true;
             _assembly = Assembly.Load(ms.ToArray()); /* Load the _assembly */
         }
+
         private void LoadTypes()
         {
             if (_assembly == null) return;
