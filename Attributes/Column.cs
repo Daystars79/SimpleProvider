@@ -9,7 +9,6 @@ namespace SimpleProvider.Attributes
     [AttributeUsage(AttributeTargets.Property)]
     public class Column : Attribute
     {
-        private object _value;
 
         /// <summary>
         ///     Property allows nullable types
@@ -41,17 +40,5 @@ namespace SimpleProvider.Attributes
         /// </summary>
         public string Name { get; set; } = string.Empty;
 
-        /// <summary>
-        /// Original Value if the object is instantiated from an DataSource
-        /// </summary>
-        public object Value
-        {
-            get => _value;
-            set
-            {
-                if (value.GetType() != DataType) return;
-                _value = value;
-            }
-        }
     }
 }

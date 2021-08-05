@@ -278,11 +278,6 @@
                 Binds an Database Field to the Properties of an Class
             </summary>
         </member>
-        <member name="P:SimpleProvider.Attributes.Column.IsUnique">
-            <summary>
-                Unique Value and can not be repeated in the Database
-            </summary>
-        </member>
         <member name="P:SimpleProvider.Attributes.Column.IsNullable">
             <summary>
                 Property allows nullable types
@@ -311,11 +306,6 @@
         <member name="P:SimpleProvider.Attributes.Column.Name">
             <summary>
                 Property Name is different than that of the Field in the DataTable
-            </summary>
-        </member>
-        <member name="P:SimpleProvider.Attributes.Column.Value">
-            <summary>
-            Original Value if the object is instantiated from an DataSource
             </summary>
         </member>
         <member name="T:SimpleProvider.Attributes.Definition">
@@ -420,57 +410,57 @@
         </member>
         <member name="T:SimpleProvider.Extensions.Extenders">
             <summary>
-                Extensions that are used publicly by the ORM
+            
             </summary>
         </member>
         <member name="M:SimpleProvider.Extensions.Extenders.GetMappings(System.Object,System.String[])">
             <summary>
-                Returns an list of PropertyMap Objects for the Mapper
+             Returns all readable / writable properties and column attributes from the current type
             </summary>
-            <param name="obj"></param>
-            <param name="names">Name of properties to be returned.</param>
-        </member>
-        <member name="M:SimpleProvider.Extensions.Extenders.SetAttributeValue(System.Reflection.PropertyInfo,System.Object)">
-            <summary>
-            
-            </summary>
-            <param name="pi"></param>
-            <param name="value"></param>
+            <param name="obj">Object</param>
+            <param name="names"></param>
+            <returns></returns>
         </member>
         <member name="M:SimpleProvider.Extensions.Extenders.GetProperties(System.Object,System.String[])">
             <summary>
-                Return PropertyInfo of all properties that have Read / Write
+            
             </summary>
             <param name="obj"></param>
             <param name="names"></param>
-            <returns>PropertyInfo[]</returns>
+            <returns></returns>
         </member>
         <member name="M:SimpleProvider.Extensions.Extenders.GetColumnDefinition(System.Reflection.PropertyInfo)">
             <summary>
-                Retrieve the Column Attribute from the PropertyInfo
+            Return the column defintion for the selected property
             </summary>
             <param name="info"></param>
-            <returns>Column Attribute</returns>
+            <returns></returns>
         </member>
         <member name="M:SimpleProvider.Extensions.Extenders.GetDefinition(System.Object)">
             <summary>
-                Retrieve Definition Attribute from an class
+            Return the definition attribute from the selected Type
             </summary>
             <param name="obj"></param>
-            <returns>Definition Attribute</returns>
+            <returns></returns>
         </member>
-        <member name="M:SimpleProvider.Extensions.Extenders.ToExpando(System.Object)">
+        <member name="M:SimpleProvider.Extensions.Extenders.GetKeyNames(System.Object)">
             <summary>
-            Convert object into an ExpandoObject
+            Return primary key names contained in the Definition Attribute
             </summary>
             <param name="obj"></param>
-            <returns>ExpandoObject</returns>
+            <returns></returns>
         </member>
         <member name="T:SimpleProvider.Mapping.CommandSets">
             <summary>
             Dynamic SQL Generation
             Generates CommandSets and associated Options
             </summary>
+        </member>
+        <member name="M:SimpleProvider.Mapping.CommandSets.#ctor(SimpleProvider.Enumerators.ProviderType)">
+            <summary>
+            Database Type
+            </summary>
+            <param name="type"></param>
         </member>
         <member name="M:SimpleProvider.Mapping.CommandSets.CreateInsert(System.Object)">
             <summary>
@@ -501,7 +491,7 @@
             <param name="args">Options for use in the "Where" clause</param>
             <returns>Exists Commandset</returns>
         </member>
-        <member name="M:SimpleProvider.Mapping.CommandSets.CreateCommandSets(System.Object)">
+        <member name="M:SimpleProvider.Mapping.CommandSets.CreateCommandSets(System.Object,System.Object)">
             <summary>
             Return an collection of CommandSets related to the specified object 
             </summary>
@@ -546,7 +536,7 @@
         </member>
         <member name="M:SimpleProvider.Mapping.CommandSets.CreateDelete(System.Object)">
             <summary>
-            Create Delete Commandset - Delete is generated from the Keys contained in the Definitition Attribute
+            Create Delete Commandset - Delete is generated from the Keys contained in the Definition Attribute
             </summary>
             <param name="record"></param>
             <returns>Delete Commandset</returns>
@@ -570,12 +560,12 @@
         </member>
         <member name="M:SimpleProvider.Mapping.CommandSets.CreateCount``1(System.String,System.Boolean,SimpleProvider.Option[])">
             <summary>
-            Returns an count of rows 
+            Command Set for getting an row count from the DB
             </summary>
             <typeparam name="T"></typeparam>
-            <param name="fieldName">Column to count</param>
-            <param name="distinct">Apply distinct</param>
-            <param name="options">Optional parameters</param>
+            <param name="fieldName"></param>
+            <param name="distinct"></param>
+            <param name="options"></param>
             <returns></returns>
         </member>
         <member name="M:SimpleProvider.Mapping.CommandSets.CreateWhere(SimpleProvider.Option[])">
@@ -629,7 +619,7 @@
         </member>
         <member name="M:SimpleProvider.CommandSet.#ctor(System.Boolean)">
             <summary>
-                Empty instance of the commandset
+             Empty instance of the commandset
             </summary>
         </member>
         <member name="M:SimpleProvider.CommandSet.#ctor(System.String,SimpleProvider.Option[])">
@@ -730,18 +720,34 @@
                 SQL equality operator is set to !=
             </summary>
         </member>
+        <member name="F:SimpleProvider.EqualityType.Is">
+            <summary>
+            SQL equality operator is set to "IS NULL"
+            </summary>
+        </member>
+        <member name="F:SimpleProvider.EqualityType.IsNot">
+            <summary>
+            SQL equality operator is set to "IS NOT NULL"
+            </summary>
+        </member>
         <member name="T:SimpleProvider.Option">
             <summary>
                 Options for the sql generator contained in the mapper.
                 Used to pass parameters to the database and orderby information
             </summary>
         </member>
-        <member name="M:SimpleProvider.Option.#ctor(System.String,System.Boolean)">
+        <member name="M:SimpleProvider.Option.#ctor(System.String)">
             <summary>
-                Create OrderBy Instance
+            Constructor for an OrderBy option
+            </summary>
+            <param name="name"></param>
+        </member>
+        <member name="M:SimpleProvider.Option.#ctor(System.String,System.Object)">
+            <summary>
+            Default Option
             </summary>
             <param name="name">Field Name</param>
-            <param name="ascending">Using ascending sort (default is descending)</param>
+            <param name="value"></param>
         </member>
         <member name="M:SimpleProvider.Option.#ctor(System.String,System.Object,SimpleProvider.EqualityType)">
             <summary>
@@ -753,11 +759,11 @@
         </member>
         <member name="M:SimpleProvider.Option.#ctor(System.String,System.Object,System.Boolean,SimpleProvider.EqualityType)">
             <summary>
-                Create OrderedBy and Parameter Instance
+            Create OrderedBy and Parameter Instance
             </summary>
             <param name="fieldname">Field Name</param>
             <param name="value">Value</param>
-            <param name="ascending">Using ascending sort (default is descending)</param>
+            <param name="isAscending">Using ascending sort (default is descending)</param>
             <param name="mt">Equality Type</param>
         </member>
         <member name="P:SimpleProvider.Option.FieldName">
@@ -770,29 +776,34 @@
                 Order By Direction
             </summary>
         </member>
-        <member name="P:SimpleProvider.Option.IsOrderBy">
+        <member name="P:SimpleProvider.Option.OrderBy">
             <summary>
-                Use in the Order By Clause
+            Use in the Order By Clause
+            </summary>
+        </member>
+        <member name="P:SimpleProvider.Option.UseOrStatement">
+            <summary>
+            Use "or" instead of "and" when this is set to true.
             </summary>
         </member>
         <member name="P:SimpleProvider.Option.Operator">
             <summary>
-                Return the underlying operation type as an string for use in query generation
+            Return the underlying operation type as an string for use in query generation
             </summary>
         </member>
         <member name="P:SimpleProvider.Option.Type">
             <summary>
-            Return the equality type used in the SQL Generation 
+            Underlying Equality Type 
             </summary>
         </member>
         <member name="P:SimpleProvider.Option.Value">
             <summary>
-                Value
+            Value
             </summary>
         </member>
         <member name="M:SimpleProvider.Option.ToString">
             <summary>
-                Returns an string containing the Key and the Value
+            Display the Field Name and Value
             </summary>
             <returns></returns>
         </member>
@@ -813,14 +824,14 @@
                 Default Timeout for Commands used by the Provider Class
             </summary>
         </member>
-        <member name="P:SimpleProvider.Provider.Type">
-            <summary>
-            Return the DatabaseType of the Current Instance
-            </summary>
-        </member>
         <member name="P:SimpleProvider.Provider.Connection">
             <summary>
                 Return the Underlying Connection
+            </summary>
+        </member>
+        <member name="P:SimpleProvider.Provider.Commands">
+            <summary>
+            Expose the underlying SQL Generator
             </summary>
         </member>
         <member name="P:SimpleProvider.Provider.Schema">
@@ -833,7 +844,7 @@
              Instantiate the Provider class using the specified connection string and Database Type
             </summary>
             <param name="connection">Connection String</param>
-            <param name="ptype">Database Type (Defaul is ProviderType.SqlServer)</param>
+            <param name="ptype">Database Type (Default is ProviderType.SqlServer)</param>
         </member>
         <member name="M:SimpleProvider.Provider.#ctor(System.String,System.String,SimpleProvider.Enumerators.ProviderType)">
             <summary>
@@ -1023,6 +1034,14 @@
             <param name="record"></param>
             <returns>Returns true if the record is deleted</returns>
         </member>
+        <member name="M:SimpleProvider.Provider.Exists``1(SimpleProvider.Option[])">
+            <summary>
+            Verify if an record exists based on the options provided.
+            </summary>
+            <typeparam name="T"></typeparam>
+            <param name="parameters"></param>
+            <returns></returns>
+        </member>
         <member name="M:SimpleProvider.Provider.Exists(System.Object)">
             <summary>
                 Verify if an record exists in the database
@@ -1030,17 +1049,26 @@
             <param name="record"></param>
             <returns>True if the record exists</returns>
         </member>
-        <member name="M:SimpleProvider.Provider.Execute(System.Data.Common.DbCommand)">
+        <member name="M:SimpleProvider.Provider.ExecuteNonQuery(System.Data.Common.DbCommand)">
             <summary>
                 Execute NonQuery using the DbCommand
             </summary>
             <param name="command">DbCommand (SqlCommand, OracleCommand, etc....)</param>
             <returns>Number of records effected</returns>
         </member>
-        <member name="M:SimpleProvider.Provider.Execute(System.String,SimpleProvider.Option[])">
+        <member name="M:SimpleProvider.Provider.ExecuteNonQuery(System.String,SimpleProvider.Option[])">
             <summary>
             </summary>
             <param name="cmdtxt"></param>
+            <param name="args"></param>
+            <returns></returns>
+        </member>
+        <member name="M:SimpleProvider.Provider.GetRecordByProcedure``1(System.String,System.Object[])">
+            <summary>
+            Executes an stored procedure that returns an record set
+            </summary>
+            <typeparam name="T"></typeparam>
+            <param name="procedureName"></param>
             <param name="args"></param>
             <returns></returns>
         </member>
@@ -1058,62 +1086,44 @@
             Custom Exceptions from the Provider
             </summary>
         </member>
-        <member name="M:SimpleProvider.ProviderException.#ctor(System.String)">
+        <member name="M:SimpleProvider.ProviderException.#ctor(System.String,System.Exception)">
             <summary>
             Create an new exception
             </summary>
             <param name="message"></param>
         </member>
-        <member name="T:SimpleProvider.ValuePairBase`2">
+        <member name="T:SimpleProvider.ValuePair`2">
             <summary>
-                Base Key
+            
             </summary>
-            <typeparam name="T">Key Type</typeparam>
-            <typeparam name="TU">Value Type</typeparam>
+            <typeparam name="T"></typeparam>
+            <typeparam name="TU"></typeparam>
         </member>
-        <member name="M:SimpleProvider.ValuePairBase`2.#ctor">
+        <member name="P:SimpleProvider.ValuePair`2.Key">
             <summary>
-                Empty Constructor
+            Data Key
             </summary>
         </member>
-        <member name="M:SimpleProvider.ValuePairBase`2.#ctor(`0,`1)">
+        <member name="P:SimpleProvider.ValuePair`2.Value">
             <summary>
-                Instance with Key and Value
+            Data Value
+            </summary>
+        </member>
+        <member name="M:SimpleProvider.ValuePair`2.#ctor">
+            <summary>
+            Empty Constructor
+            </summary>
+        </member>
+        <member name="M:SimpleProvider.ValuePair`2.#ctor(`0,`1)">
+            <summary>
+            Instance created with Key and Value Set
             </summary>
             <param name="key"></param>
             <param name="value"></param>
         </member>
-        <member name="M:SimpleProvider.ValuePairBase`2.ToString">
+        <member name="T:SimpleProvider.PropertyMap">
             <summary>
-                Return Key / Value in an formatted string.
-            </summary>
-            <returns></returns>
-        </member>
-        <member name="T:SimpleProvider.ChangeValue">
-            <summary>
-                Used to track changes to Objects for posting Updates to the DB.
-            </summary>
-        </member>
-        <member name="M:SimpleProvider.ChangeValue.#ctor(System.String,System.Object,System.Object)">
-            <summary>
-            </summary>
-            <param name="name">Field Name</param>
-            <param name="from">Original Value</param>
-            <param name="to">New Value</param>
-        </member>
-        <member name="P:SimpleProvider.ChangeValue.FieldName">
-            <summary>
-                Field Name in the Database
-            </summary>
-        </member>
-        <member name="P:SimpleProvider.ChangeValue.OldValue">
-            <summary>
-                Original Value
-            </summary>
-        </member>
-        <member name="P:SimpleProvider.ChangeValue.NewValue">
-            <summary>
-                New Value
+            Value Pair with PropertyInfo / Column Attribute Information
             </summary>
         </member>
     </members>

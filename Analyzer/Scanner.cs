@@ -33,7 +33,7 @@ namespace SimpleProvider.Analyzer
             try
             {
                 _provider = new Provider(_connection, _type);
-        }
+            }
             catch (Exception)
             {
                 throw new Exception("Unable to connect to the database with the provided connection string and type.");
@@ -49,11 +49,7 @@ namespace SimpleProvider.Analyzer
             try
             {
                 string[] values = _provider.GetValues<string>(Shared.Databases)?.ToArray();
-                if (values != null)
-                {
-                    return values.OrderBy(ob => ob).ToArray();
-                }
-                return new string[0];
+                return values?.OrderBy(ob => ob).ToArray() ?? Array.Empty<string>();
             }
             catch (Exception)
             {
@@ -67,12 +63,11 @@ namespace SimpleProvider.Analyzer
         /// <returns></returns>
         public Table[] LoadTableInformation(Action step = null, Action<int> count = null, Action complete = null)
         {
-            using Provider uow = new(_connection, _type);
             try
             {
                 using Provider uow = new(_connection, _type);
                 Table[] tables = uow.GetRecords<Table>(Shared.Tables).OrderBy(ob => ob.Name).ToArray();
-                if (tables.Length <= 0) return new Table[] { };
+                if (tables.Length <= 0) return Array.Empty<Table>();
                 count?.Invoke(tables.Length);
                 for (int index = 0; index < tables.Length; index++)
                 {
@@ -81,7 +76,6 @@ namespace SimpleProvider.Analyzer
                         uow.GetRecords<Column>(tables[index].IsTable ? Shared.TableColumns : Shared.ViewColumns, mp);
                     step?.Invoke();
                 }
-
                 return tables.OrderBy(ob => ob.Schema).ThenBy(tb => tb.Name).ToArray();
             }
             finally

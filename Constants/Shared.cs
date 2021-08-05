@@ -1,6 +1,4 @@
-﻿using SimpleProvider.Enumerators;
-
-namespace SimpleProvider.Constants
+﻿namespace SimpleProvider.Constants
 {
     /// <summary>
     ///     Contains Standard CRUD - SQL Queries for use by the ORM
@@ -15,9 +13,6 @@ namespace SimpleProvider.Constants
             @"SELECT CASE when OBJECT_ID(@procName, 'P') IS NULL THEN 0 ELSE 1 end";
 
         #endregion
-
-        public static string Operator => Type == ProviderType.Oracle ? ":" : "@";
-        public static ProviderType Type { get; set; } = ProviderType.SqlServer;
 
         #region MS-SQL, MYSQL, Post-Gres CRUD Operations
 

@@ -11,7 +11,6 @@ using SimpleProvider.Factory;
 using SimpleProvider.Mapping;
 
 
-#nullable enable
 namespace SimpleProvider
 {
     using Attributes;
@@ -111,7 +110,7 @@ namespace SimpleProvider
         ///  Instantiate the Provider class using the specified connection string and Database Type
         /// </summary>
         /// <param name="connection">Connection String</param>
-        /// <param name="ptype">Database Type (Defaul is ProviderType.SqlServer)</param>
+        /// <param name="ptype">Database Type (Default is ProviderType.SqlServer)</param>
         public Provider(string connection, ProviderType ptype = ProviderType.SqlServer)
         {
             _factory = new DbFactory(connection, ptype);
@@ -126,7 +125,6 @@ namespace SimpleProvider
         /// <param name="ptype">Database Type (Defaul is ProviderType.SqlServer)</param>
         public Provider(string connection, string schema, ProviderType ptype = ProviderType.SqlServer)
         {
-            Shared.Type = ptype;
             Schema = schema;
             _factory = new DbFactory(connection, ptype);
             _commands = new CommandSets(ptype);
@@ -141,16 +139,6 @@ namespace SimpleProvider
         {
             if (connection == null)
                 throw new ArgumentNullException(nameof(connection), "Instance of DbConnection must be provided");
-
-            Shared.Type = connection switch
-            {
-                System.Data.SqlClient.SqlConnection => ProviderType.SqlServer,
-                System.Data.SQLite.SQLiteConnection => ProviderType.Sqlite,
-                Oracle.ManagedDataAccess.Client.OracleConnection => ProviderType.Oracle,
-                MySql.Data.MySqlClient.MySqlConnection => ProviderType.MySql,
-                Npgsql.NpgsqlConnection => ProviderType.PostGres,
-                _ => ProviderType.SqlServer,
-            };
             Schema = schema;
             _factory = new DbFactory(connection);
             _commands = new CommandSets(_factory.DatabaseType);
@@ -166,27 +154,25 @@ namespace SimpleProvider
         /// <param name="command">DbCommand (SqlCommand, OracleCommand, etc)</param>
         /// <param name="type">Reference Type to be returned</param>
         /// <returns></returns>
-        public object? GetRecord(DbCommand command, Type type)
+        public object GetRecord(DbCommand command, Type type)
         {
             using (command)
             {
                 command.Connection = Connection;
                 command.CommandTimeout = CommandTimeout;
 
-                using (DbDataReader dbReader = command.ExecuteReader())
+                using DbDataReader dbReader = command.ExecuteReader();
+                try
                 {
-                    try
+                    if (dbReader.HasRows)
                     {
-                        if (dbReader.HasRows)
-                        {
-                            DbDataRecord[] collection = dbReader.AsParallel().Cast<DbDataRecord>().ToArray();
-                            return Mapper.Map(collection[0], type);
-                        }
+                        DbDataRecord[] collection = dbReader.AsParallel().Cast<DbDataRecord>().ToArray();
+                        return Mapper.Map(collection[0], type);
                     }
-                    finally
-                    {
-                        dbReader.Close();
-                    }
+                }
+                finally
+                {
+                    dbReader.Close();
                 }
             }
 
@@ -199,7 +185,7 @@ namespace SimpleProvider
         /// <param name="record">Database Record</param>
         /// <param name="type">Object Type</param>
         /// <returns></returns>
-        public object? GetRecord(object record, Type type)
+        public object GetRecord(object record, Type type)
         {
             CommandSet cs = _commands.CreateSelect(record);
             using DbCommand command = _factory.CreateCommand(cs);
@@ -212,7 +198,7 @@ namespace SimpleProvider
         /// <typeparam name="T"></typeparam>
         /// <param name="commandtext"></param>
         /// <returns></returns>
-        public T? GetRecord<T>(string commandtext) where T : class, new()
+        public T GetRecord<T>(string commandtext) where T : class, new()
         {
             if (string.IsNullOrEmpty(commandtext)) throw new ArgumentNullException(nameof(commandtext));
             CommandSet cs = new CommandSet
@@ -233,27 +219,25 @@ namespace SimpleProvider
         /// <typeparam name="T">T : class, new()</typeparam>
         /// <param name="command">DbCommand (SqlCommand, OracleCommand, etc)</param>
         /// <returns></returns>
-        public T? GetRecord<T>(DbCommand command) where T : class, new()
+        public T GetRecord<T>(DbCommand command) where T : class, new()
         {
             using (command)
             {
                 command.Connection = Connection;
                 command.CommandTimeout = CommandTimeout;
 
-                using (DbDataReader dbReader = command.ExecuteReader())
+                using DbDataReader dbReader = command.ExecuteReader();
+                try
                 {
-                    try
+                    if (dbReader.HasRows)
                     {
-                        if (dbReader.HasRows)
-                        {
-                            DbDataRecord[] collection = dbReader.AsParallel().Cast<DbDataRecord>().ToArray();
-                            return Mapper.Map<T>(collection[0]);
-                        }
+                        DbDataRecord[] collection = dbReader.AsParallel().Cast<DbDataRecord>().ToArray();
+                        return Mapper.Map<T>(collection[0]);
                     }
-                    finally
-                    {
-                        dbReader.Close();
-                    }
+                }
+                finally
+                {
+                    dbReader.Close();
                 }
             }
 
@@ -266,7 +250,7 @@ namespace SimpleProvider
         /// <typeparam name="T">T : class, new()</typeparam>
         /// <param name="args">Collection of Mapping Parameters</param>
         /// <returns></returns>
-        public T? GetRecord<T>(params Option[] args) where T : class, new()
+        public T GetRecord<T>(params Option[] args) where T : class, new()
         {
             CommandSet cs = _commands.CreateSelect<T>(args);
             using DbCommand dc = _factory.CreateCommand(cs);
@@ -351,7 +335,7 @@ namespace SimpleProvider
         /// <param name="step">Notify the host application an record has been loaded.</param>
         /// <param name="complete">Notify the host application the operation is completed</param>
         /// <returns></returns>
-        public IList<T> GetRecords<T>(DbCommand command, Action? step = null, Action? complete = null)
+        public IList<T> GetRecords<T>(DbCommand command, Action step = null, Action complete = null)
             where T : class, new()
         {
             ConcurrentBag<T> results = new();
@@ -374,7 +358,7 @@ namespace SimpleProvider
                                     collection.Length,
                                     index =>
                                     {
-                                        T? result = Mapper.Map<T>(collection[index]);
+                                        T result = Mapper.Map<T>(collection[index]);
                                         if (result != null) results.Add(result);
                                         step?.Invoke();
                                     });
@@ -415,7 +399,7 @@ namespace SimpleProvider
         /// <param name="type">Reference Type</param>
         /// <param name="args"></param>
         /// <returns></returns>
-        public IList<object>? GetTopRecords(int count, Type type, params Option[] args)
+        public IList<object> GetTopRecords(int count, Type type, params Option[] args)
         {
             ConcurrentBag<object> results = new();
             CommandSet cs = _commands.CreateTop(count, type, args);
@@ -424,7 +408,7 @@ namespace SimpleProvider
             if (!ddr.HasRows) return null;
             while (ddr.Read())
             {
-                object? result = Mapper.Map(ddr, type);
+                object result = Mapper.Map(ddr, type);
                 if (result != null) results.Add(result);
             }
 
@@ -441,7 +425,7 @@ namespace SimpleProvider
         /// <typeparam name="T">Value Type</typeparam>
         /// <param name="cmdtxt">Command Text for the DBCommand</param>
         /// <returns></returns>
-        public T? GetValue<T>(string cmdtxt)
+        public T GetValue<T>(string cmdtxt)
         {
             CommandSet cs = new(cmdtxt);
             using DbCommand command = _factory.CreateCommand(cs, _timeout);
@@ -458,7 +442,7 @@ namespace SimpleProvider
         /// <param name="cmdtxt">Query String</param>
         /// <param name="args">Parameters</param>
         /// <returns></returns>
-        public T? GetValue<T>(string cmdtxt, params Option[] args)
+        public T GetValue<T>(string cmdtxt, params Option[] args)
         {
             CommandSet cs = new(cmdtxt, args);
             using DbCommand command = _factory.CreateCommand(cs, _timeout);
@@ -471,7 +455,7 @@ namespace SimpleProvider
         /// <typeparam name="T">Value Type</typeparam>
         /// <param name="dbCommand">DbCommand (e.g. SqlCommand, OracleCommand)</param>
         /// <returns></returns>
-        public T? GetValue<T>(DbCommand dbCommand)
+        public T GetValue<T>(DbCommand dbCommand)
         {
             dbCommand.CommandTimeout = _timeout;
             dbCommand.Connection = Connection;
@@ -487,7 +471,7 @@ namespace SimpleProvider
         /// <typeparam name="T">Value Type (int, char, bool etc....)</typeparam>
         /// <param name="dbCommand">DbCommand (e.g. SqlCommand, OracleCommand)</param>
         /// <returns></returns>
-        public IList<T>? GetValues<T>(DbCommand dbCommand)
+        public IList<T> GetValues<T>(DbCommand dbCommand)
         {
             dbCommand.Connection = Connection;
             dbCommand.CommandTimeout = _timeout;
@@ -503,7 +487,7 @@ namespace SimpleProvider
         /// <param name="cmdtxt">Query Text</param>
         /// <param name="args">Parameters</param>
         /// <returns></returns>
-        public IList<T>? GetValues<T>(string cmdtxt, params Option[] args)
+        public IList<T> GetValues<T>(string cmdtxt, params Option[] args)
         {
             CommandSet cs = new CommandSet(cmdtxt, args);
             using DbCommand command = _factory.CreateCommand(cs, _timeout);
@@ -576,9 +560,9 @@ namespace SimpleProvider
 
             CommandSet cs = _commands.CreateSelect(record);
             using DbCommand dbc = _factory.CreateCommand(cs);
-            object? dbRef = GetRecord(dbc, record.GetType());
+            object dbRef = GetRecord(dbc, record.GetType());
             if (dbRef == null) return Insert(record); /* Record wasn't found proceed with an insert */
-            
+
             cs = _commands.CreateUpdate(record, dbRef, args);
 
             if (cs == null) return false;
@@ -610,6 +594,22 @@ namespace SimpleProvider
         #region Execution Methods
 
         /// <summary>
+        /// Verify if an record exists based on the options provided.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="parameters"></param>
+        /// <returns></returns>
+        public bool Exists<T>(Option[] parameters) where T : class, new()
+        {
+            if (parameters == null) throw new ArgumentNullException(nameof(parameters));
+            if (parameters.Length <= 0) throw new ArgumentNullException(nameof(parameters));
+
+            CommandSet cs = _commands.CreateExists<T>(parameters);
+            using DbCommand command = _factory.CreateCommand(cs);
+            return GetValue<int>(command) > 0;
+
+        }
+        /// <summary>
         ///     Verify if an record exists in the database
         /// </summary>
         /// <param name="record"></param>
@@ -618,9 +618,7 @@ namespace SimpleProvider
         {
             if (record == null) throw new ArgumentNullException(nameof(record));
             CommandSet cs = _commands.CreateExists(record);
-
-            using DbCommand command = _factory.CreateCommand(cs.CommandText);
-            if (cs.HasParameters) command.Parameters.AddRange(_factory.CreateParameters(cs.Parameters));
+            using DbCommand command = _factory.CreateCommand(cs);
             return GetValue<int>(command) > 0;
         }
 
@@ -629,7 +627,7 @@ namespace SimpleProvider
         /// </summary>
         /// <param name="command">DbCommand (SqlCommand, OracleCommand, etc....)</param>
         /// <returns>Number of records effected</returns>
-        public int Execute(DbCommand command)
+        public int ExecuteNonQuery(DbCommand command)
         {
             command.Connection = Connection;
             command.CommandTimeout = _timeout;
@@ -641,7 +639,7 @@ namespace SimpleProvider
         /// <param name="cmdtxt"></param>
         /// <param name="args"></param>
         /// <returns></returns>
-        public int Execute(string cmdtxt, params Option[] args)
+        public int ExecuteNonQuery(string cmdtxt, params Option[] args)
         {
             if (string.IsNullOrEmpty(cmdtxt)) throw new ArgumentNullException(nameof(cmdtxt));
             CommandSet cs = new CommandSet
@@ -652,9 +650,23 @@ namespace SimpleProvider
             using DbCommand command = _factory.CreateCommand(cs);
             return command.ExecuteNonQuery();
         }
+        /// <summary>
+        /// Executes an stored procedure that returns an record set
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="procedureName"></param>
+        /// <param name="args"></param>
+        /// <returns></returns>
+        public T GetRecordByProcedure<T>(string procedureName, params object[] args) where T : class, new()
+        {
+            if (string.IsNullOrEmpty(procedureName)) throw new ArgumentException(nameof(procedureName));
+            CommandSet cs = _commands.CreateExecute(procedureName, Schema, args);
+            DbCommand dcom = _factory.CreateCommand(cs);
+            return GetRecord<T>(dcom);
+        }
+
 
         #endregion
-
 
         #region Disposable
 

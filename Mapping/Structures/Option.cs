@@ -6,22 +6,35 @@ namespace SimpleProvider
     ///     Options for the sql generator contained in the mapper.
     ///     Used to pass parameters to the database and orderby information
     /// </summary>
-    public class Option
+    public class Option 
     {
         private string _key = string.Empty;
+        private EqualityType _opt;
         private dynamic _value;
+        private bool _isOrdered;
+
 
         /// <summary>
-        ///     Create OrderBy Instance
+        /// Constructor for an OrderBy option
         /// </summary>
-        /// <param name="name">Field Name</param>
-        /// <param name="ascending">Using ascending sort (default is descending)</param>
-        public Option(string name, bool ascending = false)
+        /// <param name="name"></param>
+        public Option(string name)
         {
             FieldName = name;
-            IsOrderBy = true;
-            IsAscending = ascending;
-            Type = EqualityType.None;
+            Value = null;
+            _opt = EqualityType.None;
+        }
+
+        /// <summary>
+        /// Default Option
+        /// </summary>
+        /// <param name="name">Field Name</param>
+        /// <param name="value"></param>
+        public Option(string name, dynamic value)
+        {
+            FieldName = name;
+            Value = value;
+            _opt = EqualityType.Equals;
         }
 
         /// <summary>
@@ -30,27 +43,26 @@ namespace SimpleProvider
         /// <param name="fieldname">Field Name</param>
         /// <param name="value">Value</param>
         /// <param name="mt">Equality Type</param>
-        public Option(string fieldname, dynamic value, EqualityType mt = EqualityType.Equals)
+        public Option(string fieldname, dynamic value, EqualityType mt)
         {
             FieldName = fieldname;
             Value = value;
-            Type = mt;
+            _opt = mt;
         }
-
         /// <summary>
-        ///     Create OrderedBy and Parameter Instance
+        /// Create OrderedBy and Parameter Instance
         /// </summary>
         /// <param name="fieldname">Field Name</param>
         /// <param name="value">Value</param>
-        /// <param name="ascending">Using ascending sort (default is descending)</param>
+        /// <param name="isAscending">Using ascending sort (default is descending)</param>
         /// <param name="mt">Equality Type</param>
-        public Option(string fieldname, dynamic value, bool ascending, EqualityType mt = EqualityType.Equals)
+        public Option(string fieldname, dynamic value, bool isAscending, EqualityType mt)
         {
             FieldName = fieldname;
             Value = value;
-            IsOrderBy = true;
-            IsAscending = ascending;
-            Type = mt;
+            OrderBy = true;
+            IsAscending = isAscending;
+            _opt = mt;
         }
 
         /// <summary>
@@ -65,73 +77,71 @@ namespace SimpleProvider
                 _key = value;
             }
         }
-
         /// <summary>
         ///     Order By Direction
         /// </summary>
         public bool IsAscending { get; set; }
-
-
         /// <summary>
-        ///     Use in the Order By Clause
+        /// Use in the Order By Clause
         /// </summary>
-        public bool IsOrderBy { get; set; }
+        public bool OrderBy
+        {
+            get => _isOrdered;
+            set
+            {
+                if (value) _opt = EqualityType.None;
+                _isOrdered = value;
+            }
+        }
+        /// <summary>
+        /// Use "or" instead of "and" when this is set to true.
+        /// </summary>
+        public bool UseOrStatement { get; set; }
 
         /// <summary>
-        ///     Return the underlying operation type as an string for use in query generation
+        /// Return the underlying operation type as an string for use in query generation
         /// </summary>
         public string Operator
         {
             get
             {
-                switch (Type)
+                return _opt switch
                 {
-                    case EqualityType.None:
-                        return null;
-                    case EqualityType.Equals:
-                        return @" = ";
-                    case EqualityType.NotEqual:
-                        return @" != ";
-                    case EqualityType.GreaterThan:
-                        return @" > ";
-                    case EqualityType.LessThan:
-                        return @" < ";
-                    default:
-                        return @" like ";
-                }
+                    EqualityType.None => null,
+                    EqualityType.Equals => @" = ",
+                    EqualityType.NotEqual => @" != ",
+                    EqualityType.GreaterThan => @" > ",
+                    EqualityType.LessThan => @" < ",
+                    EqualityType.Is => @" IS NULL",
+                    EqualityType.IsNot => @" IS NOT NULL ",
+                    _ => @" like "
+                };
             }
         }
         /// <summary>
-        /// Return the equality type used in the SQL Generation 
+        /// Underlying Equality Type 
         /// </summary>
-        public EqualityType Type { get; } 
-
+        public EqualityType Type => _opt;
         /// <summary>
-        ///     Value
+        /// Value
         /// </summary>
         public dynamic Value
         {
             get
             {
-                switch (Type)
+                return _opt switch
                 {
-                    case EqualityType.None:
-                        return null;
-                    case EqualityType.StartsWith:
-                        return $"{_value}%";
-                    case EqualityType.EndsWith:
-                        return $"%{_value}";
-                    case EqualityType.Contains:
-                        return $"%{_value}%";
-                    default:
-                        return _value;
-                }
+                    EqualityType.None => null,
+                    EqualityType.StartsWith => $"{_value}%",
+                    EqualityType.EndsWith => $"%{_value}",
+                    EqualityType.Contains => $"%{_value}%",
+                    _ => _value
+                };
             }
             set => _value = value ?? DBNull.Value;
         }
-
         /// <summary>
-        ///     Returns an string containing the Key and the Value
+        /// Display the Field Name and Value
         /// </summary>
         /// <returns></returns>
         public override string ToString()

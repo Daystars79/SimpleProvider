@@ -19,15 +19,16 @@
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
-    <DocumentationFile>C:\Users\robgwea\source\repos\CoreProvider\SimpleProvider.xml</DocumentationFile>
+    <DocumentationFile>f:\repos\CoreProvider\SimpleProvider.xml</DocumentationFile>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net5.0|AnyCPU'">
-    <DocumentationFile>C:\Users\robgwea\source\repos\CoreProvider\SimpleProvider.xml</DocumentationFile>
+    <DocumentationFile>f:\repos\CoreProvider\SimpleProvider.xml</DocumentationFile>
   </PropertyGroup>
 
   <PropertyGroup>
     <LangVersion>latest</LangVersion>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
   </PropertyGroup>
   
   <ItemGroup>
@@ -39,7 +40,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="3.8.0" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="3.10.0" />
     <PackageReference Include="MySql.Data" Version="8.0.22" />
     <PackageReference Include="Npgsql" Version="5.0.1.1" />
     <PackageReference Include="Oracle.ManagedDataAccess.Core" Version="2.19.100" />

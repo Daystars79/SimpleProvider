@@ -1,98 +1,94 @@
 ﻿using System;
 using System.Reflection;
+using Renci.SshNet.Security;
 using SimpleProvider.Attributes;
 
 namespace SimpleProvider
 {
-    /// <summary>
-    ///     Base Key
-    /// </summary>
-    /// <typeparam name="T">Key Type</typeparam>
-    /// <typeparam name="TU">Value Type</typeparam>
-    public abstract class ValuePairBase<T, TU>
+    internal interface IValuePair<T, TU>
     {
-        internal T Key;
-        internal TU Value;
-
+        public T Key { get; set; }
+        public TU Value { get; set; }
+    }
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    /// <typeparam name="TU"></typeparam>
+    public class ValuePair<T, TU> : IValuePair<T, TU>
+    {
         /// <summary>
-        ///     Empty Constructor
+        /// Data Key
         /// </summary>
-        protected ValuePairBase()
-        {
-        }
+        public T Key { get; set; }
+        /// <summary>
+        /// Data Value
+        /// </summary>
+        public TU Value { get; set; }
 
         /// <summary>
-        ///     Instance with Key and Value
+        /// Empty Constructor
+        /// </summary>
+        public ValuePair()
+        {
+
+        }
+        /// <summary>
+        /// Instance created with Key and Value Set
         /// </summary>
         /// <param name="key"></param>
         /// <param name="value"></param>
-        protected ValuePairBase(T key, TU value)
+        public ValuePair(T key, TU value)
         {
             Key = key;
             Value = value;
         }
-
-        /// <summary>
-        ///     Return Key / Value in an formatted string.
-        /// </summary>
-        /// <returns></returns>
-        public override string ToString()
-        {
-            return $"Key: {Key} : Value: {Value}";
-        }
     }
-
-    internal class PropertyMap : ValuePairBase<PropertyInfo, Column>
-    {
-        public PropertyMap(PropertyInfo key, Column value) : base(key, value)
-        {
-        }
-
-        public new PropertyInfo Key => base.Key;
-        public new Column Value => base.Value;
-    }
-
     /// <summary>
-    ///     Used to track changes to Objects for posting Updates to the DB.
+    /// Value Pair with PropertyInfo / Column Attribute Information
     /// </summary>
-    public class ChangeValue
+    public class PropertyMap : IValuePair<PropertyInfo, Column>
     {
-        private dynamic _new;
-        private dynamic _old;
+        public PropertyInfo Key { get; set; }
+        public Column Value { get; set; }
 
-        /// <summary>
-        /// </summary>
-        /// <param name="name">Field Name</param>
-        /// <param name="from">Original Value</param>
-        /// <param name="to">New Value</param>
+        public PropertyMap()
+        {
+
+        }
+        public PropertyMap(PropertyInfo key, Column value)
+        {
+            Key = key;
+            Value = value;
+        }
+    }
+    internal class ChangeValue
+    {
+        dynamic _old;
+        dynamic _new;
+
+        public string FieldName { get; set; }
+        public dynamic OldValue
+        {
+            get => _old ?? DBNull.Value;
+            set => _old = value;
+        }
+        public dynamic NewValue
+        {
+            get => _new ?? DBNull.Value;
+            set => _new = value;
+        }
+
+        public ChangeValue()
+        {
+
+        }
         public ChangeValue(string name, dynamic from, dynamic to)
         {
             FieldName = name;
             OldValue = from;
             NewValue = to;
         }
-
-        /// <summary>
-        ///     Field Name in the Database
-        /// </summary>
-        public string FieldName { get; set; }
-
-        /// <summary>
-        ///     Original Value
-        /// </summary>
-        public dynamic OldValue
-        {
-            get => _old ?? DBNull.Value;
-            set => _old = value;
-        }
-
-        /// <summary>
-        ///     New Value
-        /// </summary>
-        public dynamic NewValue
-        {
-            get => _new ?? DBNull.Value;
-            set => _new = value;
-        }
     }
+
 }

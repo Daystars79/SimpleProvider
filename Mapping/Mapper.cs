@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
@@ -6,12 +7,9 @@ using System.Dynamic;
 using SimpleProvider.Extensions;
 using System.Reflection;
 
-
-#nullable  enable
 namespace SimpleProvider.Mapping
 {
     using Attributes;
-
     internal static class Mapper
     {
         #region Record Mapping
@@ -19,7 +17,7 @@ namespace SimpleProvider.Mapping
         internal static dynamic DynamicMap(IDataRecord idr)
         {
             dynamic result = new ExpandoObject();
-            for (var x = 0; x < idr.FieldCount; x++) ((IDictionary<string, object>)result).Add(idr.GetName(x), idr[x]);
+            for (int x = 0; x < idr.FieldCount; x++) ((IDictionary<string, object>)result).Add(idr.GetName(x), idr[x]);
             return result;
         }
 
@@ -29,43 +27,41 @@ namespace SimpleProvider.Mapping
         /// <typeparam name="T"></typeparam>
         /// <param name="idr"></param>
         /// <returns></returns>
-        internal static T? Map<T>(IDataRecord idr) where T : class, new()
+        internal static T Map<T>(IDataRecord idr) where T : class, new()
         {
             T result = Activator.CreateInstance<T>();
             string[] columnNames = new string[idr.FieldCount];
 
-            for (var col = 0; col < idr.FieldCount; col++)
+            for (int col = 0; col < idr.FieldCount; col++)
             {
                 if (idr.IsDBNull(col)) continue; /* Only map the columns that have values */
                 columnNames[col] = idr.GetName(col).ToLower();
             }
 
             /* Use the extender to get the relevant properties */
-            List<PropertyMap> mappings = result.GetMappings(columnNames);
+            ConcurrentBag<PropertyMap> mappings = new(result.GetMappings(columnNames));
             if (mappings.Count <= 0) return null;
 
 
-            for (int index = 0; index < mappings.Count; index++)
+            foreach (PropertyMap pm in mappings)
             {
-                PropertyInfo pi = mappings[index].Key;
-                Column col = mappings[index].Value;
+                PropertyInfo pi = pm.Key;
+                Column col = pm.Value;
 
                 string name = string.Equals(col.Name, pi.Name, StringComparison.CurrentCultureIgnoreCase) ? pi.Name : col.Name;
-                Type? nullable = Nullable.GetUnderlyingType(pi.PropertyType);
+                Type nullable = Nullable.GetUnderlyingType(pi.PropertyType);
 
                 if (idr[name] == DBNull.Value) continue;
 
-                dynamic value = idr[name];
+                object value = idr[name];
 
-                if (value == null) continue;
-                
 
                 if (nullable != null)
                 {
                     if (col.DataType == typeof(char?))
                     {
-                        if (value == "") continue;
-                }
+                        if (ReferenceEquals(value, "")) continue;
+                    }
 
                     pi.SetValue(result, Convert.ChangeType(value, nullable), null);
                     continue; /* Step to the next property */
@@ -88,7 +84,7 @@ namespace SimpleProvider.Mapping
         /// <typeparam name="T"></typeparam>
         /// <param name="idr"></param>
         /// <returns></returns>
-        internal static T? Map<T>(DbDataRecord idr) where T : class, new()
+        internal static T Map<T>(DbDataRecord idr) where T : class, new()
         {
             T result = Activator.CreateInstance<T>();
             string[] columns = new string[idr.FieldCount];
@@ -100,30 +96,28 @@ namespace SimpleProvider.Mapping
             }
 
             /* Use the extender to get the relevant properties */
-            List<PropertyMap> mappings = result.GetMappings(columns);
+            ConcurrentBag<PropertyMap> mappings = new(result.GetMappings(columns));
 
             if (mappings.Count <= 0) return null;
 
 
-            for (int index = 0; index < mappings.Count; index++)
+            foreach(PropertyMap pm in mappings)
             {
-                PropertyInfo pi = mappings[index].Key;
-                Column col = mappings[index].Value;
+                PropertyInfo pi = pm.Key;
+                Column col = pm.Value;
 
                 string name = string.Equals(col.Name, pi.Name, StringComparison.CurrentCultureIgnoreCase) ? pi.Name : col.Name;
-                Type? nullable = Nullable.GetUnderlyingType(pi.PropertyType);
+                Type nullable = Nullable.GetUnderlyingType(pi.PropertyType);
 
                 if (idr[name] == DBNull.Value) continue;
 
-                dynamic value = idr[name];
-
-                if (value == null) continue;
+                object value = idr[name];
 
                 if (nullable != null)
                 {
                     if (col.DataType == typeof(char?))
                     {
-                        if (value == "") continue;
+                        if (ReferenceEquals(value, "")) continue;
                     }
 
                     pi.SetValue(result, Convert.ChangeType(value, nullable), null);
@@ -138,9 +132,6 @@ namespace SimpleProvider.Mapping
 
                 pi.SetValue(result, Convert.ChangeType(value, pi.PropertyType));
             }
-
-
-
             return result;
         }
 
@@ -150,11 +141,11 @@ namespace SimpleProvider.Mapping
         /// <param name="idr">DbDataRecord from DbDataReader</param>
         /// <param name="type">Type of the object to be returned</param>
         /// <returns>Returns instance of the specified type populated from the database.</returns>
-        internal static object? Map(IDataRecord idr, Type type)
+        internal static object Map(IDataRecord idr, Type type)
         {
             if (type == null) return null;
 
-            object? result = Activator.CreateInstance(type);
+            object result = Activator.CreateInstance(type);
             if (result == null) throw new Exception(@"Unable to materialize the specified type.");
 
             string[] columnNames = new string[idr.FieldCount];
@@ -166,17 +157,17 @@ namespace SimpleProvider.Mapping
             }
 
             /* Use the extender to get the relevant properties */
-            List<PropertyMap> mappings = result.GetMappings(columnNames);
+            ConcurrentBag<PropertyMap> mappings = new (result.GetMappings(columnNames));
             if (mappings.Count <= 0) return null;
 
 
-            for (int index = 0; index < mappings.Count; index++)
-            { 
-                PropertyInfo pi = mappings[index].Key;
-                Column col = mappings[index].Value;
+            foreach(PropertyMap pm in mappings)
+            {
+                PropertyInfo pi = pm.Key;
+                Column col = pm.Value;
 
                 string name = string.Equals(col.Name, pi.Name, StringComparison.CurrentCultureIgnoreCase) ? pi.Name : col.Name;
-                Type? nullable = Nullable.GetUnderlyingType(pi.PropertyType);
+                Type nullable = Nullable.GetUnderlyingType(pi.PropertyType);
 
                 if (idr[name] == DBNull.Value) continue;
 
@@ -211,9 +202,9 @@ namespace SimpleProvider.Mapping
         /// <param name="idr">DbDataRecord from DbDataReader</param>
         /// <param name="type">Type of the object to be returned</param>
         /// <returns>Returns instance of the specified type populated from the database.</returns>
-        internal static object? Map(DbDataRecord idr, Type type)
+        internal static object Map(DbDataRecord idr, Type type)
         {
-            object? result = Activator.CreateInstance(type);
+            object result = Activator.CreateInstance(type);
             if (result == null) throw new Exception(@"Unable to materialize the specified type.");
 
             string[] columNames = new string[idr.FieldCount];
@@ -225,30 +216,27 @@ namespace SimpleProvider.Mapping
             }
 
             /* Use the extender to get the relevant properties */
-            List<PropertyMap> mappings = result.GetMappings(columNames);
+            ConcurrentBag<PropertyMap> mappings = new(result.GetMappings(columNames));
             if (mappings.Count <= 0) return null;
 
 
-            for (int index = 0; index < mappings.Count; index++)
+            foreach(PropertyMap pm in mappings)
             {
-                PropertyInfo pi = mappings[index].Key;
-                Column col = mappings[index].Value;
+                PropertyInfo pi = pm.Key;
+                Column col = pm.Value;
 
                 string name = string.Equals(col.Name, pi.Name, StringComparison.CurrentCultureIgnoreCase) ? pi.Name : col.Name;
-                Type? nullable = Nullable.GetUnderlyingType(pi.PropertyType);
+                Type nullable = Nullable.GetUnderlyingType(pi.PropertyType);
 
                 if (idr[name] == DBNull.Value) continue;
 
-                dynamic value = idr[name];
-        
-
-                if (value == null) continue;
+                object value = idr[name];
 
                 if (nullable != null)
                 {
                     if (col.DataType == typeof(char?))
                     {
-                        if (value == "") continue;
+                        if (ReferenceEquals(value, "")) continue;
                     }
 
                     pi.SetValue(result, Convert.ChangeType(value, nullable), null);
@@ -280,10 +268,10 @@ namespace SimpleProvider.Mapping
             }
         }
 
-        internal static IList<T>? MapValues<T>(DbDataReader idr)
+        internal static IList<T> MapValues<T>(DbDataReader idr)
         {
             if (idr == null) throw new ArgumentNullException(nameof(idr));
-            var results = new List<T>();
+            List<T> results = new List<T>();
             try
             {
                 if (!idr.HasRows) return null;

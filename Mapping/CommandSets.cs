@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using OracleInternal.SqlAndPlsqlParser.LocalParsing;
 using SimpleProvider.Attributes;
 using SimpleProvider.Constants;
 using SimpleProvider.Enumerators;
@@ -18,29 +17,24 @@ namespace SimpleProvider.Mapping
     /// </summary>
     public class CommandSets
     {
-
-        private readonly string _operator;
+        private readonly string _op;
         private readonly ProviderType _type;
 
+
         /// <summary>
-        /// Create an instance that generates SQL for the specified ProviderType
+        /// Database Type
         /// </summary>
         /// <param name="type"></param>
         public CommandSets(ProviderType type)
         {
-            switch (type)
-            {
-                case ProviderType.Oracle:
-                    _operator = ":";
-                    break;
-                default:
-                    _operator = "@";
-                    break;
-            }
-
             _type = type;
-        }
 
+            _op = type switch
+            {
+                ProviderType.Oracle => ":",
+                _ => "@"
+            };
+        }
         /// <summary>
         ///  Generate Insert Command Set
         /// </summary>
@@ -52,43 +46,30 @@ namespace SimpleProvider.Mapping
             if (!Validate(record)) throw new Exception("An error occurred in the validation.");
 
             Definition def = record.GetDefinition(); /* get the definition from the object */
-            PropertyInfo[] properties = record.GetProperties();
+            PropertyMap[] map = record.GetMappings();
 
-            PropertyInfo[] properties = record.GetProperties();
-            CommandSet cs = new()
+            CommandSet cs = new(def.IsReadOnly)
             {
                 CommandText = $@"insert into {def.SchemaName}.{def.TableName} ("
             };
 
-            string values = "";
+            string values = ") values (";
 
-            for (int p = 0; p < properties.Length; p++)
+            for (int p = 0; p < map.Length; p++)
             {
-                bool islast = p == properties.Length - 1;
-                PropertyInfo pi = properties[p];
-                Column column = pi.GetColumnDefinition();
-                object value = pi.GetValue(record) ?? DBNull.Value;
-                if (value == DBNull.Value) continue; /* There is no need to map this value */
+                if (map[p].Value.IsScope) continue;
+                if (map[p].Value.IsVirtual) continue;
 
-                if (column.IsScope)
-                {
-                    cs.Scope = pi;
-                    continue;
-                }
+                object value = map[p].Key.GetValue(record) ?? DBNull.Value;
+                if (value == DBNull.Value) continue;
 
-                if (column.IsVirtual) continue;
-                string name = $@"{_operator}{column.Name}";
-
-                string name = $@"{Shared.Operator}{column.Name}";
-                bool islast = p == properties.Length - 1;
-
-                /* Checks for the last iteration */
-                cs.CommandText += !islast ? $"{column.Name}, " : $"{column.Name}) values (";
-                values += !islast ? $"{name} , " : $"{name})";
-                cs.Parameters.Add(new Option(name, value));
+                cs.CommandText += $"{map[p].Value.Name}, ";
+                values += $"{_op}{map[p].Value.Name}, ";
+                cs.Parameters.Add(new Option(map[p].Value.Name, value));
             }
 
-            cs.CommandText += values;
+            values = values.Substring(0, values.Length - 2) + ")";
+            cs.CommandText = cs.CommandText.Substring(0, cs.CommandText.Length - 2) + values;
             return cs;
         }
 
@@ -106,9 +87,10 @@ namespace SimpleProvider.Mapping
                 ? record.GetProperties(record.GetKeyNames())
                 : record.GetProperties();
 
-            CommandSet cs = new()
+            CommandSet cs = new(def.IsReadOnly)
             {
-                CommandText = $@"select top(1) tab.* from {def.SchemaName}.{def.TableName} tab where "
+                CommandText = _type != ProviderType.Oracle ? $@"select top(1) * from {def.SchemaName}.{def.TableName} where " :
+                                                                   $@"select * from {def.SchemaName}.{def.TableName} where "
             };
 
             for (int p = 0; p < props.Length; p++)
@@ -116,10 +98,15 @@ namespace SimpleProvider.Mapping
                 Column col = props[p].GetColumnDefinition();
                 object value = props[p].GetValue(record) ?? DBNull.Value;
                 if (col.IsVirtual) continue;
-                string name = $@"{_operator}{col.Name}";
+                string name = $@"{_op}{col.Name}";
                 bool islast = p == props.Length - 1;
                 cs.CommandText += !islast ? $"{col.Name} = {name} and " : $"{col.Name} = {name}";
                 cs.Parameters.Add(new Option(name, value));
+            }
+
+            if (_type == ProviderType.Oracle)
+            {
+                cs.CommandText += " and rownum < 2";
             }
 
             return cs;
@@ -135,17 +122,17 @@ namespace SimpleProvider.Mapping
             if (record == null) throw new ArgumentNullException(nameof(record));
 
             Definition def = record.GetDefinition();
-
-            List<PropertyMap> props = def.PrimaryKeys?.Length > 0 ? record.GetMappings(def.PrimaryKeys)
+            PropertyMap[] props = def.PrimaryKeys?.Length > 0
+                ? record.GetMappings(def.PrimaryKeys)
                 : record.GetMappings();
 
-            CommandSet cs = new(def.IsReadOnly)
+            CommandSet cs = new()
             {
                 CommandText =
-                    $@"select count(tab.{props[0].Value.Name}) from {def.SchemaName}.{def.TableName} tab",
+                    $@"select count(tab.{props[0].Value.Name}) from {def.SchemaName}.{def.TableName} tab"
             };
 
-            for (int p = 0; p < props.Count; p++)
+            for (int p = 0; p < props.Length; p++)
             {
                 PropertyInfo pi = props[p].Key;
                 Column column = props[p].Value;
@@ -155,7 +142,7 @@ namespace SimpleProvider.Mapping
             return cs;
         }
         /// <summary>
-        /// Creates Exists Command Set
+        ///     Creates Exists Command Set
         /// </summary>
         /// <typeparam name="T">class, new()</typeparam>
         /// <param name="args">Options for use in the "Where" clause</param>
@@ -169,7 +156,7 @@ namespace SimpleProvider.Mapping
             {
                 CommandText = $@"select count(tab.{def.PrimaryKeys[0]}) from {def.SchemaName}.{def.TableName} tab"
             };
-            cs.AddRange(args);
+            cs.Parameters.AddRange(args);
             cs.CommandText += CreateWhere(args);
             return cs;
         }
@@ -179,28 +166,31 @@ namespace SimpleProvider.Mapping
         /// <param name="record"></param>
         /// <param name="record2">Optional parameter to generate update string</param>
         /// <returns></returns>
-        public CommandSet[] CreateCommandSets(object record)
+        public CommandSet[] CreateCommandSets(object record, object record2 = null)
         {
+            if (record == null) throw new ArgumentNullException(nameof(record));
             Type type = record.GetType();
+            if (type == null) throw new Exception("Unable to materialize the specified type.");
 
+            bool hasUpgrade = record2 != null;
 
-
-            CommandSet[] sets = new CommandSet[6];
-
-            sets[0] = CreateInsert(record);
-            sets[1] = CreateDelete(record);
-            sets[2] = CreateExists(record);
-            sets[3] = CreateSelect(record);
-            sets[4] = CreateTop(1000, type);
-            sets[5] = CreateUpdate(record);
+            List<CommandSet> sets = new();
+            sets.Add(CreateInsert(record));
+            sets.Add(CreateDelete(record));
+            sets.Add(CreateExists(record));
+            sets.Add(CreateSelect(record));
+            sets.Add(CreateTop(1000, type));
+            CommandSet update = hasUpgrade ? CreateUpdate(record, record2) : null;
 
             sets[0].Name = "Insert";
             sets[1].Name = "Delete";
             sets[2].Name = "Exists";
             sets[3].Name = "Select";
             sets[4].Name = "Top (1000)";
-            sets[5].Name = "Update";
-            return sets;
+            if (update == null) return sets.ToArray();
+            update.Name = "Update";
+            sets.Add(update);
+            return sets.ToArray();
         }
         /// <summary>
         ///     Create Select Command Set
@@ -214,10 +204,10 @@ namespace SimpleProvider.Mapping
             Definition def = t.GetDefinition();
             CommandSet cs = new()
             {
-                CommandText = $"select tab.* from {def.SchemaName}.{def.TableName}"
+                CommandText = $"select tab.* from {def.SchemaName}.{def.TableName} tab"
             };
-            cs.AddRange(args);
             cs.CommandText += CreateWhere(args) + OrderBy(args);
+            cs.Parameters.AddRange(args);
             return cs;
         }
 
@@ -237,10 +227,8 @@ namespace SimpleProvider.Mapping
             Definition def = t.GetDefinition();
             CommandSet cs = new CommandSet
             {
-                CommandText = string.Format(_type == ProviderType.Oracle ? Shared.OracleTop : Shared.SqlTop,
-                    def.SchemaName, def.TableName, number)
+                CommandText = string.Format(_type == ProviderType.Oracle ? Shared.OracleTop : Shared.SqlTop, def.SchemaName, def.TableName, number)
             };
-            cs.AddRange(args);
             cs.CommandText += CreateWhere(args) + OrderBy(args);
             return cs;
         }
@@ -271,79 +259,16 @@ namespace SimpleProvider.Mapping
                 {
                     bool isLast = mp == mps.Length - 1;
                     cs.CommandText += !isLast
-                        ? $"{mps[mp].FieldName} {mps[mp].Operator} {_operator}{mps[mp].FieldName} and "
-                        : $"{mps[mp].FieldName} {mps[mp].Operator} {_operator}{mps[mp].FieldName}";
+                        ? $"{mps[mp].FieldName} {mps[mp].Operator} {_op}{mps[mp].FieldName} and "
+                        : $"{mps[mp].FieldName} {mps[mp].Operator} {_op}{mps[mp].FieldName}";
                 }
 
-                cs.AddRange(mps);
+                cs.Parameters.AddRange(mps);
             }
 
             cs.CommandText += OrderBy(args);
             return cs;
         }
-        /// <summary>
-        /// 
-        /// </summary>
-        /// <param name="target"></param>
-        /// <param name="args"></param>
-        /// <returns></returns>
-        public CommandSet CreateUpdate(object target, params Option[] args)
-        {
-            if (target == null) throw new ArgumentNullException(nameof(target));
-            if (!Validate(target)) throw new ArgumentException("Record validation failed");
-
-            ICollection<ChangeValue> changes = GetChanges(target);
-
-            if (changes.Count <= 0) return new CommandSet() { CommandText = "No work to be done" };
-
-            Definition def = target.GetDefinition();
-            CommandSet cs = new(def.IsReadOnly)
-            {
-                CommandText = string.Format(Shared.Update, def.SchemaName, def.TableName)
-            };
-            /* Set the base line */
-            List<PropertyMap> props = target.GetMappings(changes.Select(s => s.FieldName).ToArray());
-            for (int pm = 0; pm < props.Count; pm++)
-            {
-                Column col = props[pm].Value;
-                /* These can not be updated */
-                if (col.IsVirtual) continue;
-                if (col.IsScope) continue;
-
-                bool isLast = pm == props.Count - 1;
-                cs.CommandText += isLast
-                    ? $"{col.Name} = {_operator}u_{pm}"
-                    : $"{col.Name} = {_operator}u_{pm},";
-                cs.Parameters.Add(new Option($"u_{pm}", props[pm].Key.GetValue(target)));
-            }
-
-            if (args?.Length > 0)
-            {
-                args = args.Where(a => a.Type != EqualityType.None).ToArray();
-                cs.CommandText += CreateWhere(args);
-                return cs;
-            }
-
-            PropertyInfo[] keys = target.GetProperties(def.PrimaryKeys);
-            if (!(keys.Length > 0)) return cs;
-            {
-                string where = " where ";
-
-                for (int index = 0; index < keys.Length; index++)
-                {
-                    bool isLast = index == keys.Length - 1;
-                    where += isLast
-                        ? $"{keys[index].Name} = {_operator}{keys[index].Name}"
-                        : $"{keys[index].Name} = {_operator}{keys[index].Name} and ";
-                    cs.Parameters.Add(new Option(keys[index].Name, keys[index].GetValue(target)));
-                }
-                cs.CommandText += where;
-            }
-            return cs;
-        }
-
-
-
 
         /// <summary>
         ///  Create Update Commandset - Runs an comparison of the local object versus the database record.
@@ -357,34 +282,28 @@ namespace SimpleProvider.Mapping
             if (target == null) throw new ArgumentNullException(nameof(target));
             if (source == null) throw new ArgumentNullException(nameof(source));
             if (!Validate(target)) throw new ArgumentException("Record validation failed");
-
             if (target.GetType() != source.GetType()) throw new Exception("Objects are not of the same type.");
             if (ReferenceEquals(target, source)) throw new Exception("Target and Source are the same object");
 
             ICollection<ChangeValue> changes = Compare(source, target);
             if (changes.Count <= 0) return null;
-
-            CommandSet cs = new();
             Definition def = target.GetDefinition();
-
             CommandSet cs = new(def.IsReadOnly)
             {
                 CommandText = string.Format(Shared.Update, def.SchemaName, def.TableName)
             };
-            /* Set the base line */
-            cs.CommandText = string.Format(Shared.Update, def.SchemaName, def.TableName);
-            List<PropertyMap> props = target.GetMappings(changes.Select(s => s.FieldName).ToArray());
-            for (int pm = 0; pm < props.Count; pm++)
+            PropertyMap[] props = target.GetMappings(changes.Select(s => s.FieldName).ToArray());
+            for (int pm = 0; pm < props.Length; pm++)
             {
                 Column col = props[pm].Value;
                 /* These can not be updated */
                 if (col.IsVirtual) continue;
                 if (col.IsScope) continue;
 
-                bool isLast = pm == props.Count - 1;
+                bool isLast = pm == props.Length - 1;
                 cs.CommandText += isLast
-                    ? $"{col.Name} = {_operator}u_{pm}"
-                    : $"{col.Name} = {_operator}u_{pm},";
+                    ? $"{col.Name} = {_op}u_{pm}"
+                    : $"{col.Name} = {_op}u_{pm},";
                 cs.Parameters.Add(new Option($"u_{pm}", props[pm].Key.GetValue(target)));
             }
 
@@ -396,27 +315,25 @@ namespace SimpleProvider.Mapping
             }
 
             PropertyInfo[] keys = target.GetProperties(def.PrimaryKeys);
-            if (!(keys.Length > 0)) return cs;
+            if (!(keys?.Length > 0)) return cs;
             {
                 string where = " where ";
 
                 for (int index = 0; index < keys.Length; index++)
                 {
                     bool isLast = index == keys.Length - 1;
-                    where += isLast
-                        ? $"{keys[index].Name} = {_operator}{keys[index].Name}"
-                        : $"{keys[index].Name} = {_operator}{keys[index].Name} and ";
+                    @where += isLast
+                        ? $"{keys[index].Name} = {_op}{keys[index].Name}"
+                        : $"{keys[index].Name} = {_op}{keys[index].Name} and ";
                     cs.Parameters.Add(new Option(keys[index].Name, keys[index].GetValue(target)));
                 }
 
-                cs.CommandText += where;
+                cs.CommandText += @where;
             }
             return cs;
         }
-
-
         /// <summary>
-        /// Create Delete Commandset - Delete is generated from the Keys contained in the Definitition Attribute
+        /// Create Delete Commandset - Delete is generated from the Keys contained in the Definition Attribute
         /// </summary>
         /// <param name="record"></param>
         /// <returns>Delete Commandset</returns>
@@ -431,8 +348,8 @@ namespace SimpleProvider.Mapping
             {
                 PropertyInfo pi = properties[index];
                 Column col = pi.GetColumnDefinition();
-                if (index == 0) cs.CommandText += $"where {col.Name} = {_operator}{col.Name}";
-                else cs.CommandText += $" and {col.Name} = {_operator}{col.Name}";
+                if (index == 0) cs.CommandText += $"where {col.Name} = {_op}{col.Name}";
+                else cs.CommandText += $" and {col.Name} = {_op}{col.Name}";
                 cs.Parameters.Add(new Option(col.Name, pi.GetValue(record)));
             }
 
@@ -449,8 +366,12 @@ namespace SimpleProvider.Mapping
         {
             T reference = Activator.CreateInstance<T>();
             Definition def = reference.GetDefinition();
-            CommandSet cs = new(def.IsReadOnly) { CommandText = $"delete {def.SchemaName}.{def.TableName}" };
-            cs.AddRange(args);
+            CommandSet cs = new(def.IsReadOnly)
+            {
+                CommandText = $"delete {def.SchemaName}.{def.TableName}"
+            };
+            cs.Parameters.AddRange(args);
+            args = args.Where(w => w.Type != EqualityType.None).ToArray();
             cs.CommandText += CreateWhere(args);
             return cs;
         }
@@ -472,20 +393,21 @@ namespace SimpleProvider.Mapping
             {
                 bool isLast = index == parameters.Length - 1;
 
-                cs.CommandText += isLast ? $" {_operator}p_{index}" : $" {_operator}p_{index},";
+                cs.CommandText += isLast ? $" {_op}p_{index}" : $" {_op}p_{index},";
                 Option param = new($"p_{index}", parameters[index]);
                 cs.Parameters.Add(param);
             }
 
             return cs;
         }
+
         /// <summary>
-        /// Returns an count of rows 
+        /// Command Set for getting an row count from the DB
         /// </summary>
         /// <typeparam name="T"></typeparam>
-        /// <param name="fieldName">Column to count</param>
-        /// <param name="distinct">Apply distinct</param>
-        /// <param name="options">Optional parameters</param>
+        /// <param name="fieldName"></param>
+        /// <param name="distinct"></param>
+        /// <param name="options"></param>
         /// <returns></returns>
         public CommandSet CreateCount<T>(string fieldName, bool distinct, params Option[] options) where T : class, new()
         {
@@ -494,15 +416,15 @@ namespace SimpleProvider.Mapping
             T item = Activator.CreateInstance<T>();
             Definition def = item.GetDefinition();
 
-            CommandSet cs = new CommandSet()
+            CommandSet cs = new()
             {
                 CommandText = @$"select count({dist} tab.{fieldName}) from {def.SchemaName}.{def.TableName} tab"
             };
-
             cs.CommandText += CreateWhere(options);
             cs.CommandText += OrderBy(options);
 
-            cs.AddRange(options);
+            cs.Parameters.AddRange(options);
+
             return cs;
         }
 
@@ -524,12 +446,37 @@ namespace SimpleProvider.Mapping
             for (int opt = 0; opt < options.Length; opt++)
             {
                 bool islast = (opt == options.Length - 1);
-                where += islast ? $"{options[opt].FieldName} {options[opt].Operator} {_operator}{options[opt].FieldName}" :
-                                  $"{options[opt].FieldName} {options[opt].Operator} {_operator}{options[opt].FieldName} and ";
+                string andOr = options[opt].UseOrStatement ? " or " : " and ";
+
+                string param = $"{_op}{options[opt].FieldName}";
+
+
+
+                switch (options[opt].Type)
+                {
+                    case EqualityType.Is:
+                    case EqualityType.IsNot:
+                        where += islast ? $"{options[opt].FieldName} {options[opt].Operator}"
+                                        : $"{options[opt].FieldName} {options[opt].Operator} {andOr} ";
+                        break;
+                    default:
+                        if (where.Contains(param))
+                        {
+                            param = $"{param}_{opt}";
+                            where += islast
+                                ? $"{options[opt].FieldName} {options[opt].Operator} {param}"
+                                : $"{options[opt].FieldName} {options[opt].Operator} {param} {andOr} ";
+                            options[opt].FieldName = param;
+                            break;
+                        }
+                        where += islast
+                            ? $"{options[opt].FieldName} {options[opt].Operator} {param}"
+                            : $"{options[opt].FieldName} {options[opt].Operator} {param} {andOr} ";
+                        break;
+                }
             }
             return where;
         }
-
         #endregion
 
         #region Sorting
@@ -538,7 +485,7 @@ namespace SimpleProvider.Mapping
         {
             if (parameters.Length <= 0) return string.Empty;
 
-            parameters = parameters.Where(w => w.IsOrderBy).ToArray();
+            parameters = parameters.Where(w => w.OrderBy).ToArray();
             if (parameters.Length <= 0) return null;
 
             string sort = " order by ";
@@ -549,7 +496,6 @@ namespace SimpleProvider.Mapping
                 string dir = parameters[mp].IsAscending ? "asc" : "desc";
                 sort += isLast ? $"{parameters[mp].FieldName} {dir}" : $"{parameters[mp].FieldName} {dir}, ";
             }
-
             return sort;
         }
 
@@ -562,9 +508,9 @@ namespace SimpleProvider.Mapping
             if (record == null)
                 throw new ArgumentNullException(nameof(record));
 
-            List<PropertyMap> mapping = record.GetMappings();
+            PropertyMap[] mapping = record.GetMappings();
 
-            for (int x = 0; x < mapping.Count; x++)
+            for (int x = 0; x < mapping.Length; x++)
             {
                 PropertyInfo prop = mapping[x].Key;
                 Column column = mapping[x].Value;
@@ -633,44 +579,17 @@ namespace SimpleProvider.Mapping
             return a.Equals(b);
         }
 
-        internal ICollection<ChangeValue> GetChanges(object source)
-        {
-            if (source == null) throw new ArgumentNullException(nameof(source));
-            HashSet<ChangeValue> changes = new HashSet<ChangeValue>();
-            List<PropertyMap> mapping = source.GetMappings();
-
-            for (int index = 0; index < mapping.Count; index++)
-            {
-                PropertyMap map = mapping[index];
-                dynamic sourceValue = map.Key.GetValue(source);
-                dynamic targetValue = map.Value.Value;
-
-                if (sourceValue != null && sourceValue.GetType() != typeof(DBNull))
-                {
-                    if (HasEquality(sourceValue, targetValue)) continue;
-                    ChangeValue dbChange = new ChangeValue(map.Value.Name, sourceValue, targetValue);
-                    changes.Add(dbChange);
-                }
-                else if (targetValue != null)
-                {
-                    ChangeValue dbChange = new ChangeValue(map.Value.Name, null, targetValue);
-                    changes.Add(dbChange);
-                }
-            }
-            return changes;
-        }
-
-
         internal ICollection<ChangeValue> Compare(object source, object target)
         {
-            if (target == null) throw new ArgumentNullException(nameof(target));
-            if (source == null) throw new ArgumentNullException(nameof(source));
-            if (target.GetType() != source.GetType())
-                throw new Exception("Source and Target must be of the same type.");
-            HashSet<ChangeValue> changes = new HashSet<ChangeValue>();
-            List<PropertyMap> mapping = target.GetMappings();
+            if (target == null) return null;
+            if (source == null) return null;
 
-            for (int index = 0; index < mapping.Count; index++)
+            if (target.GetType() != source.GetType()) throw new Exception("Source and Target must be of the same type.");
+
+            HashSet<ChangeValue> changes = new HashSet<ChangeValue>();
+            PropertyMap[] mapping = target.GetMappings();
+
+            for (int index = 0; index < mapping.Length; index++)
             {
                 PropertyMap map = mapping[index];
                 dynamic sourceValue = map.Key.GetValue(source);

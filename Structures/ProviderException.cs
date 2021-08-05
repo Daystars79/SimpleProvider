@@ -11,7 +11,7 @@ namespace SimpleProvider
         /// Create an new exception
         /// </summary>
         /// <param name="message"></param>
-        public ProviderException(string message) : base(message)
+        public ProviderException(string message, Exception ex) : base(message)
         {
         }
     }

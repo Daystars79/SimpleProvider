@@ -32,7 +32,7 @@ namespace SimpleProvider
         public CommandSet(string commandtext, params Option[] parameters)
         {
             CommandText = commandtext;
-            Parameters = new HashSet<Option>(parameters);
+            Parameters = new List<Option>(parameters);
         }
 
         /// <summary>
@@ -43,7 +43,7 @@ namespace SimpleProvider
         /// <summary>
         ///     List of Mapping Parameters this should match the parameters contained in the SQL
         /// </summary>
-        public HashSet<Option> Parameters { get; } = new();
+        public List<Option> Parameters { get; } = new();
 
         /// <summary>
         /// Passes the IdentityScope back from the Database
@@ -81,7 +81,7 @@ namespace SimpleProvider
         public void AddRange(IEnumerable<Option> options)
         {
             if (options == null) return;
-            var enumerable = options as Option[] ?? options.ToArray();
+            Option[] enumerable = options as Option[] ?? options.ToArray();
             for (int x = 0; x < enumerable.Count(); x++)
             {
                 Add(enumerable[x]);
